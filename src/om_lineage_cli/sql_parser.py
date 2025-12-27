@@ -23,10 +23,19 @@ def _collect_cte_names(expression: exp.Expression) -> Set[str]:
     return names
 
 
+def _table_name(table: exp.Table) -> str:
+    name = table.name
+    if table.db:
+        name = f"{table.db}.{name}"
+    if table.catalog:
+        name = f"{table.catalog}.{name}"
+    return name
+
+
 def _collect_sources(expression: exp.Expression, cte_names: Set[str]) -> List[str]:
     tables = set()
     for table in expression.find_all(exp.Table):
-        name = table.sql(dialect="mysql")
+        name = _table_name(table)
         base = table.name
         if base in cte_names:
             continue
@@ -40,7 +49,7 @@ def _collect_aliases(expression: exp.Expression, cte_names: Set[str]) -> Dict[st
         if table.name in cte_names:
             continue
         if table.alias:
-            aliases[table.alias] = table.sql(dialect="mysql")
+            aliases[table.alias] = _table_name(table)
     return aliases
 
 
