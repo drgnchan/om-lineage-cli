@@ -32,3 +32,15 @@ om-lineage \
   --openmetadata-url http://localhost:8585 \
   --token "$OPENMETADATA_TOKEN"
 ```
+
+If you only want a table-level preview without OpenMetadata credentials:
+
+```bash
+om-lineage \
+  --sql-file ./query.sql \
+  --service my_service \
+  --default-database analytics \
+  --dry-run
+```
+
+When not using `--dry-run`, `--openmetadata-url` and `--token` are required.
