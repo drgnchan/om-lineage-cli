@@ -1,6 +1,6 @@
 import tempfile
 from pathlib import Path
-from om_lineage_cli.cli import run_once
+from om_lineage_cli.cli import run_once, _split_table
 
 
 class FakeOM:
@@ -61,3 +61,9 @@ def test_run_once_offline_dry_run_skips_column_lineage():
         assert "Target: db.db.user_out" in out
         assert "Source: db.db.users" in out
         assert "Columns:" not in out
+
+
+def test_cli_split_table_two_part_uses_default_db_for_database():
+    t = _split_table("analytics_flink.user_info", default_database="internal", default_schema="internal")
+    assert t.database == "internal"
+    assert t.schema == "analytics_flink"
