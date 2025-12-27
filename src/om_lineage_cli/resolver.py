@@ -16,7 +16,7 @@ def _split_table(name: str, default_database: str, default_schema: str) -> Table
     if len(parts) == 1:
         return TableName(database=default_database, schema=default_schema, name=parts[0])
     if len(parts) == 2:
-        return TableName(database=parts[0], schema=default_schema, name=parts[1])
+        return TableName(database=default_database, schema=parts[0], name=parts[1])
     if len(parts) == 3:
         return TableName(database=parts[0], schema=parts[1], name=parts[2])
     raise ValueError(f"Unsupported table name: {name}")

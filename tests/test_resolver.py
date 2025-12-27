@@ -1,5 +1,5 @@
 import pytest
-from om_lineage_cli.resolver import resolve_lineage
+from om_lineage_cli.resolver import resolve_lineage, _split_table
 from om_lineage_cli.sql_parser import parse_sql
 
 
@@ -55,3 +55,10 @@ def test_ambiguous_unqualified_column_errors():
             default_schema="db",
             metadata=FakeMeta(),
         )
+
+
+def test_split_table_two_part_uses_default_db_for_database():
+    t = _split_table("analytics_flink.user_info", default_database="internal", default_schema="internal")
+    assert t.database == "internal"
+    assert t.schema == "analytics_flink"
+    assert t.name == "user_info"
