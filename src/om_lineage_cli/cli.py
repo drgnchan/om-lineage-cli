@@ -1,4 +1,5 @@
 import argparse
+from pathlib import Path
 from om_lineage_cli.config import Config
 from om_lineage_cli.formatter import format_dry_run
 from om_lineage_cli.models import LineageGraph, TableEntity
@@ -62,5 +63,67 @@ def build_lineage_payload(graph: LineageGraph, service: str, table_map: dict[str
     }
 
 
+def run_once(
+    *,
+    sql_file: str,
+    service: str,
+    default_database: str,
+    default_schema: str,
+    target: str | None,
+    dry_run: bool,
+    om_client: OpenMetadataClient,
+) -> str | None:
+    sql = Path(sql_file).read_text(encoding="utf-8")
+    parsed = parse_sql(sql)
+
+    if parsed.is_select_only and not target:
+        raise SystemExit("--target is required for SELECT-only SQL")
+
+    if target:
+        parsed = parsed.__class__(
+            target=target,
+            sources=parsed.sources,
+            select_expressions=parsed.select_expressions,
+            insert_columns=parsed.insert_columns,
+            is_select_only=parsed.is_select_only,
+            cte_names=parsed.cte_names,
+            table_aliases=parsed.table_aliases,
+        )
+
+    graph = resolve_lineage(
+        parsed=parsed,
+        service=service,
+        default_database=default_database,
+        default_schema=default_schema,
+        metadata=om_client,
+    )
+
+    table_map: dict[str, TableEntity] = {}
+    target_fqn = f"{service}.{graph.target_table.qualified_name()}"
+    table_map[target_fqn] = om_client.get_table(target_fqn)
+    for src in graph.source_tables:
+        src_fqn = f"{service}.{src.qualified_name()}"
+        table_map[src_fqn] = om_client.get_table(src_fqn)
+
+    if dry_run:
+        return format_dry_run(graph)
+
+    payload = build_lineage_payload(graph, service=service, table_map=table_map)
+    om_client.post_lineage(payload)
+    return None
+
+
 def main() -> None:
-    parse_args([])
+    config = parse_args(None)
+    client = OpenMetadataClient(config.openmetadata_url, config.token)
+    output = run_once(
+        sql_file=config.sql_file,
+        service=config.service,
+        default_database=config.default_database,
+        default_schema=config.default_schema,
+        target=config.target,
+        dry_run=config.dry_run,
+        om_client=client,
+    )
+    if output:
+        print(output)
