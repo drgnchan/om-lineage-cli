@@ -2,7 +2,7 @@ import argparse
 from pathlib import Path
 from om_lineage_cli.config import Config
 from om_lineage_cli.formatter import format_dry_run
-from om_lineage_cli.models import LineageGraph, TableEntity
+from om_lineage_cli.models import LineageGraph, TableEntity, TableName
 from om_lineage_cli.openmetadata import OpenMetadataClient
 from om_lineage_cli.resolver import resolve_lineage
 from om_lineage_cli.sql_parser import parse_sql
@@ -66,6 +66,17 @@ def build_lineage_payload(graph: LineageGraph, service: str, table_map: dict[str
     }
 
 
+def _split_table(name: str, default_database: str, default_schema: str):
+    parts = name.split(".")
+    if len(parts) == 1:
+        return TableName(database=default_database, schema=default_schema, name=parts[0])
+    if len(parts) == 2:
+        return TableName(database=parts[0], schema=default_schema, name=parts[1])
+    if len(parts) == 3:
+        return TableName(database=parts[0], schema=parts[1], name=parts[2])
+    raise ValueError(f"Unsupported table name: {name}")
+
+
 def run_once(
     *,
     sql_file: str,
@@ -74,7 +85,7 @@ def run_once(
     default_schema: str,
     target: str | None,
     dry_run: bool,
-    om_client: OpenMetadataClient,
+    om_client: OpenMetadataClient | None,
 ) -> str | None:
     sql = Path(sql_file).read_text(encoding="utf-8")
     parsed = parse_sql(sql)
@@ -92,6 +103,20 @@ def run_once(
             cte_names=parsed.cte_names,
             table_aliases=parsed.table_aliases,
         )
+
+    
+    if dry_run and om_client is None:
+        target_name = parsed.target or target
+        if target_name is None:
+            raise SystemExit("--target is required for SELECT-only SQL")
+        target_table = _split_table(target_name, default_database, default_schema)
+        source_tables = tuple(_split_table(s, default_database, default_schema) for s in parsed.sources)
+        graph = LineageGraph(
+            target_table=target_table,
+            source_tables=source_tables,
+            column_lineage=tuple(),
+        )
+        return format_dry_run(graph)
 
     graph = resolve_lineage(
         parsed=parsed,
@@ -118,7 +143,9 @@ def run_once(
 
 def main() -> None:
     config = parse_args(None)
-    client = OpenMetadataClient(config.openmetadata_url, config.token)
+    client = None
+    if not config.dry_run:
+        client = OpenMetadataClient(config.openmetadata_url, config.token)
     output = run_once(
         sql_file=config.sql_file,
         service=config.service,
