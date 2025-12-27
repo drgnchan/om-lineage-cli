@@ -8,7 +8,7 @@ class Config:
     service: str
     default_database: str
     default_schema: str
-    openmetadata_url: str
-    token: str
+    openmetadata_url: Optional[str]
+    token: Optional[str]
     target: Optional[str]
     dry_run: bool

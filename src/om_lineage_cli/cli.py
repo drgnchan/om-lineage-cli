@@ -14,13 +14,16 @@ def parse_args(argv: list[str]) -> Config:
     parser.add_argument("--service", required=True)
     parser.add_argument("--default-database", required=True)
     parser.add_argument("--default-schema")
-    parser.add_argument("--openmetadata-url", required=True)
-    parser.add_argument("--token", required=True)
+    parser.add_argument("--openmetadata-url")
+    parser.add_argument("--token")
     parser.add_argument("--target")
     parser.add_argument("--dry-run", action="store_true")
 
     ns = parser.parse_args(argv)
     default_schema = ns.default_schema or ns.default_database
+
+    if not ns.dry_run and (not ns.openmetadata_url or not ns.token):
+        parser.error("--openmetadata-url and --token are required unless --dry-run is set")
 
     return Config(
         sql_file=ns.sql_file,
