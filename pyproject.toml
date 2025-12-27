@@ -1,0 +1,26 @@
+[project]
+name = "om-lineage"
+version = "0.1.0"
+description = "OpenMetadata SQL lineage CLI"
+requires-python = ">=3.11"
+readme = "README.md"
+dependencies = [
+  "sqlglot>=23.0.0",
+  "requests>=2.31.0"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+  "responses>=0.25.0"
+]
+
+[project.scripts]
+om-lineage = "om_lineage_cli.cli:main"
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
